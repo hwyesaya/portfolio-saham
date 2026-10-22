@@ -67,19 +67,32 @@ export async function GET() {
     const uniqueCodes = [...new Set(holdings.map((h: any) => h.kode_saham))]
     const priceMap: Record<string, any> = {}
 
+    // 🆕 TAMBAHAN: Logging & Cache Busting
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    console.log(`[Portfolio API] Base URL untuk fetch harga: ${baseUrl}`)
+
     await Promise.all(
       uniqueCodes.map(async (code) => {
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/stock-price?code=${code}`)
+          const res = await fetch(`${baseUrl}/api/stock-price?code=${code}`, {
+            cache: 'no-store', // 🆕 Paksa ambil data baru, jangan pakai cache Vercel
+            next: { revalidate: 0 }
+          })
           const data = await res.json()
-          if (data.price) {
+          
+          // 🆕 Log hasil fetch agar kita bisa lihat di Vercel Logs
+          console.log(`[Portfolio API] Harga untuk ${code}:`, data)
+          
+          if (data.price && Number(data.price) > 0) {
             priceMap[code] = {
               price: Number(data.price),
               previous_close: Number(data.previousClose || data.price)
             }
+          } else {
+            console.warn(`[Portfolio API] ⚠️ Harga tidak valid untuk ${code}:`, data)
           }
         } catch (error) {
-          console.error(`Gagal fetch harga ${code}:`, error)
+          console.error(`[Portfolio API] ❌ Gagal fetch harga ${code}:`, error)
         }
       })
     )
@@ -99,7 +112,7 @@ export async function GET() {
         previous_close,
         nilai_pasar: Math.round(nilai_pasar),
         unrealized_pl: Math.round(unrealized_pl),
-        unrealized_pl_pct: current_price > 0 ? (unrealized_pl / h.modal_aktual) * 100 : 0,
+        unrealized_pl_pct: current_price > 0 && h.modal_aktual > 0 ? (unrealized_pl / h.modal_aktual) * 100 : 0,
         change: Math.round(change * 100) / 100,
         change_pct: Math.round(change_pct * 100) / 100
       }
