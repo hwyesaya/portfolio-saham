@@ -119,6 +119,19 @@ export async function POST(request: Request) {
       RETURNING *
     `
 
+    // 🆕 AUTO-SAVE HARGA SAHAM KE TABEL stock_prices
+    try {
+      await sql`
+        INSERT INTO stock_prices (kode_saham, harga, updated_at)
+        VALUES (${kode_saham.toUpperCase()}, ${Number(harga)}, NOW())
+        ON CONFLICT (kode_saham) 
+        DO UPDATE SET harga = ${Number(harga)}, updated_at = NOW()
+      `
+      console.log(`[Transactions API] ✅ Saved price for ${kode_saham}: ${harga}`)
+    } catch (err) {
+      console.warn('[Transactions API] ️ Failed to save stock price:', err)
+    }
+
     return NextResponse.json({ success: true, transaction: result[0] })
   } catch (error: any) {
     console.error('POST transactions Error:', error)
@@ -162,6 +175,18 @@ export async function PUT(request: Request) {
         catatan = ${catatan || null}
       WHERE id = ${id} AND user_id = ${userId}
     `
+
+    //  AUTO-SAVE HARGA SAHAM (juga saat update)
+    try {
+      await sql`
+        INSERT INTO stock_prices (kode_saham, harga, updated_at)
+        VALUES (${kode_saham.toUpperCase()}, ${Number(harga)}, NOW())
+        ON CONFLICT (kode_saham) 
+        DO UPDATE SET harga = ${Number(harga)}, updated_at = NOW()
+      `
+    } catch (err) {
+      console.warn('[Transactions API] ⚠️ Failed to save stock price on update:', err)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

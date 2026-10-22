@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -16,8 +16,6 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string>('')
-  
-  // 🆕 State untuk grouping
   const [groupBy, setGroupBy] = useState<'saham' | 'rdn'>('saham')
 
   useEffect(() => {
@@ -29,12 +27,10 @@ export default function PortfolioPage() {
     else setLoading(true)
     
     try {
-      // 1. Fetch Holdings (dengan harga terbaru dari Yahoo)
       const resPortfolio = await fetch('/api/portfolio')
       const dataPortfolio = await resPortfolio.json()
       setHoldings(dataPortfolio.holdings || [])
 
-      // 2. Fetch Summary
       const resSummary = await fetch('/api/dashboard-summary')
       const dataSummary = await resSummary.json()
       
@@ -50,7 +46,6 @@ export default function PortfolioPage() {
         total_pl_pct: totalPlPct
       })
 
-      // Update waktu terakhir refresh
       const now = new Date()
       setLastUpdated(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
       
@@ -67,7 +62,6 @@ export default function PortfolioPage() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num)
   }
 
-  // 🆕 Logic Grouping per RDN
   const groupedByRDN = holdings.reduce((acc: any, h: any) => {
     const rdnKey = `${h.rdn_id}-${h.rdn_nama}`
     if (!acc[rdnKey]) {
@@ -111,15 +105,29 @@ export default function PortfolioPage() {
             </p>
           </div>
           <button 
-            onClick={() => fetchPortfolio(true)} 
+            onClick={async () => {
+              setRefreshing(true)
+              try {
+                const res = await fetch('/api/update-stock-prices', { method: 'POST' })
+                const data = await res.json()
+                if (data.success) {
+                  alert(`✅ Berhasil update ${data.updated} saham, ${data.failed} gagal`)
+                } else {
+                  alert('❌ Gagal update harga')
+                }
+              } catch (error) {
+                alert('Error: ' + error)
+              } finally {
+                await fetchPortfolio(true)
+              }
+            }} 
             disabled={refreshing}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm flex items-center gap-2 disabled:opacity-50"
           >
-            {refreshing ? '⏳ Memuat...' : '🔄 Refresh Harga'}
+            {refreshing ? '⏳ Updating...' : '🔄 Refresh Harga'}
           </button>
         </div>
 
-        {/* SUMMARY CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total Modal</p>
@@ -147,12 +155,9 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        {/* TABEL POSISI SAHAM */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Posisi Saham</h2>
-            
-            {/* 🆕 Tombol Toggle Grouping */}
             <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
                 onClick={() => setGroupBy('saham')}
@@ -211,7 +216,6 @@ export default function PortfolioPage() {
                     </td>
                   </tr>
                 ) : groupBy === 'saham' ? (
-                  // Tampilan Per Saham
                   holdings.map((h, idx) => (
                     <tr key={`${h.rdn_id}-${h.kode_saham}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white">
                       <td className="px-4 py-3">
@@ -250,7 +254,6 @@ export default function PortfolioPage() {
                     </tr>
                   ))
                 ) : (
-                  // Tampilan Per RDN
                   rdnGroups.map((rdn: any, idx: number) => {
                     const plPct = rdn.total_modal > 0 ? (rdn.total_unrealized_pl / rdn.total_modal) * 100 : 0
                     return (

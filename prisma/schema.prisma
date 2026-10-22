@@ -73,3 +73,10 @@ model Holding {
 
   @@unique([userId, kodeSaham])
 }
+model stock_prices {
+  id            Int       @id @default(autoincrement())
+  kode_saham    String    @unique
+  harga         Float
+  updated_at    DateTime  @default(now())
+  created_at    DateTime  @default(now())
+}
