@@ -1,51 +1,48 @@
 import { NextResponse } from 'next/server'
+import yahooFinance from 'yahoo-finance2'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    let code = searchParams.get('code')
+    const code = searchParams.get('code')
 
     if (!code) {
-      return NextResponse.json({ error: 'Kode saham wajib diisi' }, { status: 400 })
+      return NextResponse.json({ error: 'Code parameter is required' }, { status: 400 })
     }
 
-    // Tambahkan suffix .JK untuk saham Indonesia jika belum ada
-    const ticker = code.toUpperCase().endsWith('.JK') ? code.toUpperCase() : `${code.toUpperCase()}.JK`
+    const ticker = `${code}.JK`
     
-    // Fetch data dari Yahoo Finance API (On-demand)
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`
+    console.log(`[Stock Price API] Fetching price for ${ticker} using yahoo-finance2`)
+
+    // Pakai library yahoo-finance2 dengan type assertion
+    const quote: any = await yahooFinance.quote(ticker)
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    })
+    const price = quote.regularMarketPrice || 0
+    const previousClose = quote.regularMarketPreviousClose || price
 
-    if (!response.ok) {
-      throw new Error('Gagal mengambil data dari Yahoo Finance')
+    if (!price || price <= 0) {
+      console.warn(`[Stock Price API] No valid price for ${ticker}`)
+      return NextResponse.json({ 
+        price: 0, 
+        previousClose: 0,
+        error: 'No valid price found'
+      })
     }
 
-    const data = await response.json()
-    const result = data.chart.result[0]
-    const meta = result.meta
-    const currentPrice = meta.regularMarketPrice
-    const previousClose = meta.chartPreviousClose || meta.previousClose
-
-    if (!currentPrice) {
-      return NextResponse.json({ error: 'Data harga tidak ditemukan' }, { status: 404 })
-    }
+    console.log(`[Stock Price API] ✅ ${code} = Rp ${price}`)
 
     return NextResponse.json({
-      code: ticker,
-      price: currentPrice,
-      previousClose: previousClose,
-      change: currentPrice - previousClose,
-      changePercent: ((currentPrice - previousClose) / previousClose) * 100,
-      currency: meta.currency || 'IDR'
+      price,
+      previousClose,
+      symbol: ticker
     })
 
   } catch (error: any) {
-    console.error('GET stock-price Error:', error)
-    return NextResponse.json({ error: error.message || 'Gagal mengambil harga saham' }, { status: 500 })
+    console.error('[Stock Price API] ❌ Error:', error.message)
+    return NextResponse.json({ 
+      price: 0, 
+      previousClose: 0,
+      error: error.message 
+    })
   }
 }
