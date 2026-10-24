@@ -75,7 +75,44 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ alerts })
+    
+    // 🆕 NEW: Check Watchlist Target Prices
+    const watchlist = await sql`
+      SELECT w.kode_saham, w.target_price, sp.harga as current_price
+      FROM watchlist w
+      LEFT JOIN stock_prices sp ON sp.kode_saham = w.kode_saham
+      WHERE w.user_id = ${userId} AND w.target_price IS NOT NULL AND w.target_price > 0
+    `
+
+    for (const w of watchlist) {
+      const target = Number(w.target_price)
+      const current = Number(w.current_price)
+
+      if (current > 0) {
+        const diff = current - target
+        const diffPct = (diff / target) * 100
+
+        if (current >= target) {
+          alerts.push({
+            type: 'success',
+            kode: w.kode_saham,
+            message: `🎯 Target Harga ${w.kode_saham} TERCAPAI!`,
+            detail: `Target: Rp ${target.toLocaleString('id-ID')}, Saat ini: Rp ${current.toLocaleString('id-ID')} (+${diffPct.toFixed(1)}%)`,
+            severity: 'high'
+          })
+        } else if (diffPct >= -5) {
+          alerts.push({
+            type: 'info',
+            kode: w.kode_saham,
+            message: `⚠️ ${w.kode_saham} mendekati target harga`,
+            detail: `Target: Rp ${target.toLocaleString('id-ID')}, Saat ini: Rp ${current.toLocaleString('id-ID')} (Kurang ${Math.abs(diffPct).toFixed(1)}%)`,
+            severity: 'medium'
+          })
+        }
+      }
+    }
+
+return NextResponse.json({ alerts })
   } catch (error: any) {
     console.error('Alerts API error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
