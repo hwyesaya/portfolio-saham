@@ -172,6 +172,7 @@ export default function DashboardPage() {
     { name: 'Statistics', href: '/dashboard/statistics', color: 'bg-pink-600 dark:bg-pink-700', icon: '🎯' },
     { name: 'Calculator', href: '/dashboard/calculator', color: 'bg-orange-600 dark:bg-orange-700', icon: '🧮' },
     { name: 'Chart', href: '/dashboard/chart', color: 'bg-indigo-600 dark:bg-indigo-700', icon: '📉' },
+    { name: 'Notifikasi', href: '/dashboard/alerts', color: 'bg-red-600 dark:bg-red-700', icon: '🔔' },
   ]
 
   const formatRupiah = (num: number) => {
