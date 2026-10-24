@@ -1,4 +1,5 @@
 'use client'
+import AlertBox from '@/components/AlertBox'
 
 import { useEffect, useState } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
@@ -197,6 +198,7 @@ export default function DashboardPage() {
 
   if (!isLoaded) {
     return <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <AlertBox />
 
         {/* ALERT BOX */}
         {!alertsLoading && alerts.length > 0 && (
